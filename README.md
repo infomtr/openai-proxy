@@ -8,4 +8,4 @@ A simple Express.js proxy to enable frontend apps to call OpenAI's API securely 
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/openai-proxy.git
-cd openai-sproxy
+cd openai-proxy
