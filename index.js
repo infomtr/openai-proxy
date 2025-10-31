@@ -59,6 +59,11 @@ async function extractTextFromFile(filePath, originalName) {
   }
 }
 
+// 🔧 Sanitize extracted OCR text like your .NET app
+function sanitizeText(text) {
+  return text.replace(/[^a-zA-Z0-9\s.,$#\-_]/g, '');
+}
+
 function buildPrompt(statementText) {
   return `
 From the following text, please extract data and return only a JSON string that would deserialize to the following C# class:
@@ -93,6 +98,7 @@ public class StatementData
     public Metadata metadata { get; set; }
     public Transaction[] transactions { get; set; }
 }
+
 For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.)
 
 Please include no explanation or commentary. Just return the raw JSON string only.
@@ -117,10 +123,13 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
       await fs.unlink(file.path);
     }
 
-    const prompt = buildPrompt(combinedText);
+    const cleanText = sanitizeText(combinedText);
+    console.log("🧼 Cleaned text length:", cleanText.length);
 
-    console.log("🟡 Prompt sent to OpenAI:");
-    console.log(prompt.substring(0, 3000));
+    const prompt = buildPrompt(cleanText);
+
+    console.log("🟡 Prompt length:", prompt.length);
+    console.log("🟡 Prompt preview:", prompt.substring(0, 3000));
 
     const chatCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -131,8 +140,8 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     let resultText = chatCompletion.choices?.[0]?.message?.content;
 
-    console.log("🟢 OpenAI response:");
-    console.log(resultText?.substring(0, 3000));
+    console.log("🟢 Raw OpenAI response:");
+    console.log(resultText?.substring(0, 3000) || '[empty]');
 
     try {
       let parsed;
