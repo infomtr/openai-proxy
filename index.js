@@ -14,20 +14,39 @@ app.post('/extract', async (req, res) => {
   const { statementText } = req.body;
 
   const prompt = `
-Extract the following from the bank statement below:
-1. Metadata: Statement Date, Date Range, Bank Name, Account Number, Owner Name
-2. Transactions: Array of { Date, Description, Amount, DepositOrWithdrawal }
+Extract the following from the bank statement text below:
+1. Metadata: Owner Name, Bank Name, Account Number, Statement Date,
+   DateRangeStartDate, DateRangeEndDate,
+   TotalAmountOfDepositsAsReported (if present),
+   TotalAmountOfWithdrawalsAsReported (if present),
+   TotalCountOfDepositsAsReported (if present),
+   TotalCountOfWithdrawalsAsReported (if present)
+2. Transactions: Array of objects { Date, Description, Amount, DepositOrWithdrawal, TransactionCategory }
 
-Return JSON with:
+For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.)
+Return JSON with this structure:
 {
   "metadata": {
-    "statementDate": "",
-    "dateRange": "",
+    "ownerName": "",
     "bankName": "",
     "accountNumber": "",
-    "ownerName": ""
+    "statementDate": "",
+    "dateRangeStartDate": "",
+    "dateRangeEndDate": "",
+    "totalAmountOfDepositsAsReported": null,
+    "totalAmountOfWithdrawalsAsReported": null,
+    "totalCountOfDepositsAsReported": null,
+    "totalCountOfWithdrawalsAsReported": null
   },
-  "transactions": [ ... ]
+  "transactions": [
+    {
+      "date": "",
+      "description": "",
+      "amount": 0.0,
+      "depositOrWithdrawal": "",
+      "transactionCategory": ""
+    }
+  ]
 }
 
 Statement:
