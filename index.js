@@ -47,9 +47,9 @@ async function extractTextFromFile(filePath, originalName) {
   const ext = path.extname(originalName).toLowerCase();
 
   if (isPdfOrImage(originalName)) {
-    const poller = await docClient.beginAnalyzeDocument("prebuilt-bankStatement.us", fileBytes, {
-      contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
-    });
+    const poller = await docClient.beginAnalyzeDocument("prebuilt-read", fileBytes, {
+  contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
+});
     const result = await poller.pollUntilDone();
     return extractPlainTextFromAzureResult(result);
   } else {
