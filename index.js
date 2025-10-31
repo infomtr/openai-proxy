@@ -61,7 +61,7 @@ async function extractTextFromFile(filePath, originalName) {
 
 // 🔧 Sanitize extracted OCR text like your .NET app
 function sanitizeText(text) {
-  return text.replace(/[^a-zA-Z0-9\s.,$#\-_]/g, '');
+  return text.replace(/[^a-zA-Z0-9\s.,$#\-_\/]/g, '');
 }
 
 function buildPrompt(statementText) {
@@ -129,7 +129,7 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     const prompt = buildPrompt(cleanText);
 
     console.log("🟡 Prompt length:", prompt.length);
-    console.log("🟡 Prompt preview:", prompt.substring(0, 3000));
+    console.log("🟡 Prompt preview:", prompt);
 
     const chatCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
