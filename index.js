@@ -92,22 +92,27 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     const prompt = buildPrompt(combinedText);
 
-    const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2
-    });
+    console.log("🟡 Sending prompt to OpenAI...");
+console.log("Prompt:", prompt.substring(0, 3000)); // Limit to 3k chars in log
 
-let resultText = chatCompletion.choices[0].message.content;
+const chatCompletion = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: prompt }],
+  temperature: 0.2,
+  max_tokens: 1500 // Optional cap
+});
 
+let resultText = chatCompletion.choices?.[0]?.message?.content;
+
+console.log("🟢 Raw OpenAI response received:");
+console.log(resultText?.substring(0, 3000) || "[empty or undefined]"); // Log first 3k chars
+
+// Try extracting JSON block
 try {
   let parsed;
-
-  // If it's already an object, no need to parse
   if (typeof resultText === 'object') {
     parsed = resultText;
   } else {
-    // Strip to just the JSON portion
     const firstBrace = resultText.indexOf('{');
     const lastBrace = resultText.lastIndexOf('}');
     const jsonString = resultText.slice(firstBrace, lastBrace + 1);
@@ -116,7 +121,7 @@ try {
 
   res.json({ success: true, result: parsed });
 } catch (err) {
-  console.error("Failed to parse OpenAI response:", err);
+  console.error("🔴 JSON parse error:", err.message || err);
   res.status(500).json({
     success: false,
     error: "OpenAI response was not valid JSON.",
