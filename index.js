@@ -29,8 +29,10 @@ function isPdfOrImage(filename) {
 function extractPlainTextFromAzureResult(result) {
   const lines = [];
 
-  if (result.content) {
-    lines.push(result.content);
+  if (result.paragraphs?.length) {
+    for (const para of result.paragraphs) {
+      lines.push(para.content || '');
+    }
   } else if (result.pages?.length) {
     for (const page of result.pages) {
       for (const line of page.lines || []) {
@@ -39,7 +41,7 @@ function extractPlainTextFromAzureResult(result) {
     }
   }
 
-  return lines.join('\n');
+  return lines.join(' ');
 }
 
 async function extractTextFromFile(filePath, originalName) {
@@ -47,7 +49,7 @@ async function extractTextFromFile(filePath, originalName) {
   const ext = path.extname(originalName).toLowerCase();
 
   if (isPdfOrImage(originalName)) {
-    const poller = await docClient.beginAnalyzeDocument("prebuilt-read", fileBytes, {
+    const poller = await docClient.beginAnalyzeDocument("prebuilt-layout", fileBytes, {
       contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
     });
     const result = await poller.pollUntilDone();
@@ -59,20 +61,45 @@ async function extractTextFromFile(filePath, originalName) {
 
 function buildPrompt(statementText) {
   return `
-Extract the following from the bank statement text below:
-1. Metadata: Owner Name, Bank Name, Account Number, Statement Date,
-   DateRangeStartDate, DateRangeEndDate,
-   TotalAmountOfDepositsAsReported (if present),
-   TotalAmountOfWithdrawalsAsReported (if present),
-   TotalCountOfDepositsAsReported (if present),
-   TotalCountOfWithdrawalsAsReported (if present)
-2. Transactions: Array of objects { Date, Description, Amount, DepositOrWithdrawal, TransactionCategory }
+From the following text, please extract data and return only a JSON string that would deserialize to the following C# class:
 
+public class StatementData
+{
+    public class Metadata
+    {
+        public string statementDate { get; set; }
+        public string dateRange { get; set; }
+        public string bankName { get; set; }
+        public string accountNumber { get; set; }
+        public string ownerName { get; set; }
+
+        public string dateRangeStartDate { get; set; }
+        public string dateRangeEndDate { get; set; }
+        public string totalAmountOfDepositsAsReported { get; set; }
+        public string totalAmountOfWithdrawalsAsReported { get; set; }
+        public string totalCountOfDepositsAsReported { get; set; }
+        public string totalCountOfWithdrawalsAsReported { get; set; }
+    }
+
+    public class Transaction
+    {
+        public string Date { get; set; }
+        public string Description { get; set; }
+        public string Amount { get; set; }
+        public string DepositOrWithdrawal { get; set; }
+        public string TransactionCategory { get; set; }
+    }
+
+    public Metadata metadata { get; set; }
+    public Transaction[] transactions { get; set; }
+}
 For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.)
-Return the result as raw JSON only — no commentary or explanation.
 
-Statement text:
-"""${statementText}"""
+Please include no explanation or commentary. Just return the raw JSON string only.
+
+--- Begin Statement Text ---
+${statementText}
+--- End Statement Text ---
 `;
 }
 
@@ -92,45 +119,43 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     const prompt = buildPrompt(combinedText);
 
-    console.log("🟡 Sending prompt to OpenAI...");
-console.log("Prompt:", prompt.substring(0, 3000)); // Limit to 3k chars in log
+    console.log("🟡 Prompt sent to OpenAI:");
+    console.log(prompt.substring(0, 3000));
 
-const chatCompletion = await openai.chat.completions.create({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: prompt }],
-  temperature: 0.2,
-  max_tokens: 1500 // Optional cap
-});
+    const chatCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 2000
+    });
 
-let resultText = chatCompletion.choices?.[0]?.message?.content;
+    let resultText = chatCompletion.choices?.[0]?.message?.content;
 
-console.log("🟢 Raw OpenAI response received:");
-console.log(resultText?.substring(0, 3000) || "[empty or undefined]"); // Log first 3k chars
+    console.log("🟢 OpenAI response:");
+    console.log(resultText?.substring(0, 3000));
 
-// Try extracting JSON block
-try {
-  let parsed;
-  if (typeof resultText === 'object') {
-    parsed = resultText;
-  } else {
-    const firstBrace = resultText.indexOf('{');
-    const lastBrace = resultText.lastIndexOf('}');
-    const jsonString = resultText.slice(firstBrace, lastBrace + 1);
-    parsed = JSON.parse(jsonString);
-  }
+    try {
+      let parsed;
+      if (typeof resultText === 'object') {
+        parsed = resultText;
+      } else {
+        const firstBrace = resultText.indexOf('{');
+        const lastBrace = resultText.lastIndexOf('}');
+        const jsonString = resultText.slice(firstBrace, lastBrace + 1);
+        parsed = JSON.parse(jsonString);
+      }
 
-  res.json({ success: true, result: parsed });
-} catch (err) {
-  console.error("🔴 JSON parse error:", err.message || err);
-  res.status(500).json({
-    success: false,
-    error: "OpenAI response was not valid JSON.",
-    raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
-  });
-}
-
+      res.json({ success: true, result: parsed });
+    } catch (err) {
+      console.error("🔴 JSON parse error:", err.message);
+      res.status(500).json({
+        success: false,
+        error: "OpenAI response was not valid JSON.",
+        raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
+      });
+    }
   } catch (error) {
-    console.error("Server error:", JSON.stringify(error, null, 2));
+    console.error("🔴 Server error:", JSON.stringify(error, null, 2));
     res.status(500).json({
       success: false,
       error: typeof error === 'object' ? JSON.stringify(error, null, 2) : error.toString()
