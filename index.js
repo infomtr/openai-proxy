@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
-import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-document-intelligence';
+import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
 
 dotenv.config();
 
