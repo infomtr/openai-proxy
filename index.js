@@ -140,6 +140,7 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     let resultText = chatCompletion.choices?.[0]?.message?.content;
 
+    console.log("✅ Finish reason:", chatCompletion.choices?.[0]?.finish_reason); // <-- Add this line
     console.log("🟢 Raw OpenAI response:");
     console.log(resultText?.substring(0, 3000) || '[empty]');
 
