@@ -13,11 +13,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const azureEndpoint = process.env.AZURE_ENDPOINT;
 const azureKey = process.env.AZURE_KEY;
-
-let docClient;
-if (azureEndpoint && azureKey) {
-  docClient = new DocumentAnalysisClient(azureEndpoint, new AzureKeyCredential(azureKey));
-}
+const docClient = new DocumentAnalysisClient(azureEndpoint, new AzureKeyCredential(azureKey));
 
 const app = express();
 app.use(cors());
@@ -25,49 +21,39 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
-// Utility: determine if file extension indicates PDF/image
 function isPdfOrImage(filename) {
   const ext = path.extname(filename).toLowerCase();
-  return ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp', '.gif'].includes(ext);
+  return ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp'].includes(ext);
 }
 
-// Extract text from a plain‑text file
-async function extractTextFromTxt(filePath) {
-  return fs.readFile(filePath, 'utf8');
-}
+function extractPlainTextFromAzureResult(result) {
+  const lines = [];
 
-// Use Azure Document Intelligence to analyze a bank statement
-async function analyzeWithAzure(filePath) {
-  const fileBytes = await fs.readFile(filePath);
-  const contentType = "application/pdf"; // you may adjust based on extension (image/jpeg etc)
-
-  const poller = await docClient.beginAnalyzeDocument(
-    "prebuilt‑bankStatement.us",
-    fileBytes,
-    {
-      contentType,
-      // optional splitMode: "auto" if you require splitting multi‑statement PDFs
-      // splitMode: "auto"
+  if (result.content) {
+    lines.push(result.content);
+  } else if (result.pages?.length) {
+    for (const page of result.pages) {
+      for (const line of page.lines || []) {
+        lines.push(line.content || '');
+      }
     }
-  );
+  }
 
-  const result = await poller.pollUntilDone();
-  // Convert the result into a raw text extract or JSON extract as needed.
-  // For simplicity: we’ll serialize the result JSON to a string and return it.
-  return JSON.stringify(result);
+  return lines.join('\n');
 }
 
 async function extractTextFromFile(filePath, originalName) {
-  if (isPdfOrImage(originalName) && docClient) {
-    try {
-      return await analyzeWithAzure(filePath);
-    } catch (err) {
-      console.error("Azure analysis failed:", err);
-      // fallback: attempt reading as text
-      return await extractTextFromTxt(filePath);
-    }
+  const fileBytes = await fs.readFile(filePath);
+  const ext = path.extname(originalName).toLowerCase();
+
+  if (isPdfOrImage(originalName)) {
+    const poller = await docClient.beginAnalyzeDocument("prebuilt-bankStatement.us", fileBytes, {
+      contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
+    });
+    const result = await poller.pollUntilDone();
+    return extractPlainTextFromAzureResult(result);
   } else {
-    return await extractTextFromTxt(filePath);
+    return await fs.readFile(filePath, 'utf8');
   }
 }
 
@@ -128,17 +114,28 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     }
 
     const prompt = buildPrompt(combinedText);
+
     const chatCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2
     });
 
-    const resultJson = chatCompletion.choices[0].message.content;
-    // Optionally parse to object here
-    res.json({ success: true, result: resultJson });
+    let resultText = chatCompletion.choices[0].message.content;
+
+    // Validate JSON before returning
+    try {
+      const parsed = JSON.parse(resultText);
+      res.json({ success: true, result: parsed });
+    } catch {
+      res.status(500).json({
+        success: false,
+        error: "OpenAI response was not valid JSON.",
+        raw: resultText
+      });
+    }
   } catch (error) {
-    console.error("Error processing files:", error);
+    console.error("Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
