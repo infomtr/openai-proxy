@@ -48,8 +48,8 @@ async function extractTextFromFile(filePath, originalName) {
 
   if (isPdfOrImage(originalName)) {
     const poller = await docClient.beginAnalyzeDocument("prebuilt-read", fileBytes, {
-  contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
-});
+      contentType: ext === '.pdf' ? 'application/pdf' : 'image/jpeg',
+    });
     const result = await poller.pollUntilDone();
     return extractPlainTextFromAzureResult(result);
   } else {
@@ -69,34 +69,10 @@ Extract the following from the bank statement text below:
 2. Transactions: Array of objects { Date, Description, Amount, DepositOrWithdrawal, TransactionCategory }
 
 For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.)
-Return JSON with this structure:
-{
-  "metadata": {
-    "ownerName": "",
-    "bankName": "",
-    "accountNumber": "",
-    "statementDate": "",
-    "dateRangeStartDate": "",
-    "dateRangeEndDate": "",
-    "totalAmountOfDepositsAsReported": null,
-    "totalAmountOfWithdrawalsAsReported": null,
-    "totalCountOfDepositsAsReported": null,
-    "totalCountOfWithdrawalsAsReported": null
-  },
-  "transactions": [
-    {
-      "date": "",
-      "description": "",
-      "amount": 0.0,
-      "depositOrWithdrawal": "",
-      "transactionCategory": ""
-    }
-  ]
-}
+Return the result as raw JSON only — no commentary or explanation.
 
 Statement text:
 """${statementText}"""
-Return the result as **raw JSON only** — no commentary or explanation.
 `;
 }
 
@@ -124,25 +100,29 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     let resultText = chatCompletion.choices[0].message.content;
 
-// Attempt to extract first JSON object from response
-const firstBrace = resultText.indexOf('{');
-const lastBrace = resultText.lastIndexOf('}');
-const jsonString = resultText.slice(firstBrace, lastBrace + 1);
+    // Attempt to extract the JSON from the response text
+    const firstBrace = resultText.indexOf('{');
+    const lastBrace = resultText.lastIndexOf('}');
+    const jsonString = resultText.slice(firstBrace, lastBrace + 1);
 
-try {
-  const parsed = JSON.parse(jsonString);
-  res.json({ success: true, result: parsed });
-} catch (err) {
-  console.error("Failed to parse JSON:", err);
-  res.status(500).json({
-    success: false,
-    error: "OpenAI response was not valid JSON.",
-    raw: resultText
-  });
-}
+    try {
+      const parsed = JSON.parse(jsonString);
+      res.json({ success: true, result: parsed });
+    } catch (err) {
+      console.error("Failed to parse JSON:", JSON.stringify(err, null, 2));
+      res.status(500).json({
+        success: false,
+        error: "OpenAI response was not valid JSON.",
+        raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
+      });
+    }
+
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Server error:", JSON.stringify(error, null, 2));
+    res.status(500).json({
+      success: false,
+      error: typeof error === 'object' ? JSON.stringify(error, null, 2) : error.toString()
+    });
   }
 });
 
