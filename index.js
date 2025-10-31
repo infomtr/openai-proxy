@@ -96,6 +96,7 @@ Return JSON with this structure:
 
 Statement text:
 """${statementText}"""
+Return the result as **raw JSON only** — no commentary or explanation.
 `;
 }
 
@@ -123,17 +124,22 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
     let resultText = chatCompletion.choices[0].message.content;
 
-    // Validate JSON before returning
-    try {
-      const parsed = JSON.parse(resultText);
-      res.json({ success: true, result: parsed });
-    } catch {
-      res.status(500).json({
-        success: false,
-        error: "OpenAI response was not valid JSON.",
-        raw: resultText
-      });
-    }
+// Attempt to extract first JSON object from response
+const firstBrace = resultText.indexOf('{');
+const lastBrace = resultText.lastIndexOf('}');
+const jsonString = resultText.slice(firstBrace, lastBrace + 1);
+
+try {
+  const parsed = JSON.parse(jsonString);
+  res.json({ success: true, result: parsed });
+} catch (err) {
+  console.error("Failed to parse JSON:", err);
+  res.status(500).json({
+    success: false,
+    error: "OpenAI response was not valid JSON.",
+    raw: resultText
+  });
+}
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ success: false, error: error.message });
