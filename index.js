@@ -41,7 +41,7 @@ function extractPlainTextFromAzureResult(result) {
     }
   }
 
-  return lines.join(' ');
+  return lines.join('\n');
 }
 
 async function extractTextFromFile(filePath, originalName) {
