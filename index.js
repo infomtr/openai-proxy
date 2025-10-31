@@ -98,24 +98,31 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
       temperature: 0.2
     });
 
-    let resultText = chatCompletion.choices[0].message.content;
+let resultText = chatCompletion.choices[0].message.content;
 
-    // Attempt to extract the JSON from the response text
+try {
+  let parsed;
+
+  // If it's already an object, no need to parse
+  if (typeof resultText === 'object') {
+    parsed = resultText;
+  } else {
+    // Strip to just the JSON portion
     const firstBrace = resultText.indexOf('{');
     const lastBrace = resultText.lastIndexOf('}');
     const jsonString = resultText.slice(firstBrace, lastBrace + 1);
+    parsed = JSON.parse(jsonString);
+  }
 
-    try {
-      const parsed = JSON.parse(jsonString);
-      res.json({ success: true, result: parsed });
-    } catch (err) {
-      console.error("Failed to parse JSON:", JSON.stringify(err, null, 2));
-      res.status(500).json({
-        success: false,
-        error: "OpenAI response was not valid JSON.",
-        raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
-      });
-    }
+  res.json({ success: true, result: parsed });
+} catch (err) {
+  console.error("Failed to parse OpenAI response:", err);
+  res.status(500).json({
+    success: false,
+    error: "OpenAI response was not valid JSON.",
+    raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
+  });
+}
 
   } catch (error) {
     console.error("Server error:", JSON.stringify(error, null, 2));
