@@ -135,7 +135,7 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      max_tokens: 4096
+      max_tokens: 15000
     });
 
     let resultText = chatCompletion.choices?.[0]?.message?.content;
