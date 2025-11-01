@@ -59,7 +59,6 @@ async function extractTextFromFile(filePath, originalName) {
   }
 }
 
-// 🔧 Sanitize extracted OCR text like your .NET app
 function sanitizeText(text) {
   return text.replace(/[^a-zA-Z0-9\s.,$#\-_\/]/g, '');
 }
@@ -127,9 +126,7 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     console.log("🧼 Cleaned text length:", cleanText.length);
 
     const prompt = buildPrompt(cleanText);
-
     console.log("🟡 Prompt length:", prompt.length);
-    console.log("🟡 Prompt preview:", prompt);
 
     const chatCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -138,48 +135,31 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
       max_tokens: 15000
     });
 
-    let resultText = chatCompletion.choices?.[0]?.message?.content;
+    const resultText = chatCompletion.choices?.[0]?.message?.content;
+    const finishReason = chatCompletion.choices?.[0]?.finish_reason;
 
-    console.log("✅ Finish reason:", chatCompletion.choices?.[0]?.finish_reason); // <-- Add this line
-    console.log("🟢 Raw OpenAI response:");
-    console.log(resultText?.substring(0, 3000) || '[empty]');
+    console.log("✅ Finish reason:", finishReason);
+    console.log("🟢 Raw OpenAI response preview:", resultText?.substring(0, 500));
 
-      console.log("🔍 Attempting to parse:", jsonString.slice(0, 500)); // Optional, preview
-
-  const parsed = JSON.parse(jsonString);
-  res.json({ success: true, result: parsed });
-} catch (err) {
-  console.error("❌ JSON parse failed:", err.message);
-  res.status(500).json({
-    success: false,
-    error: "OpenAI response was not valid JSON.",
-    raw: resultText
-  });
-}
-    
     try {
-      let parsed;
-      if (typeof resultText === 'object') {
-        parsed = resultText;
-      } else {
-        const firstBrace = resultText.indexOf('{');
-        const lastBrace = resultText.lastIndexOf('}');
-        const jsonString = resultText.slice(firstBrace, lastBrace + 1);
-        parsed = JSON.parse(jsonString);
-      }
+      const firstBrace = resultText.indexOf('{');
+      const lastBrace = resultText.lastIndexOf('}');
+      const jsonString = resultText.slice(firstBrace, lastBrace + 1);
 
-      res.json({ success: true, result: parsed });
-    } catch (err) {
-      console.error("🔴 JSON parse error:", err.message);
-      res.status(500).json({
+      const parsed = JSON.parse(jsonString);
+
+      return res.json({ success: true, result: parsed });
+    } catch (parseErr) {
+      console.error("❌ JSON parse failed:", parseErr.message);
+      return res.status(500).json({
         success: false,
         error: "OpenAI response was not valid JSON.",
-        raw: typeof resultText === 'object' ? JSON.stringify(resultText, null, 2) : resultText
+        raw: resultText
       });
     }
   } catch (error) {
     console.error("🔴 Server error:", JSON.stringify(error, null, 2));
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: typeof error === 'object' ? JSON.stringify(error, null, 2) : error.toString()
     });
@@ -188,5 +168,5 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
