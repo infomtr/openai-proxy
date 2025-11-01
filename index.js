@@ -144,6 +144,19 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     console.log("🟢 Raw OpenAI response:");
     console.log(resultText?.substring(0, 3000) || '[empty]');
 
+      console.log("🔍 Attempting to parse:", jsonString.slice(0, 500)); // Optional, preview
+
+  const parsed = JSON.parse(jsonString);
+  res.json({ success: true, result: parsed });
+} catch (err) {
+  console.error("❌ JSON parse failed:", err.message);
+  res.status(500).json({
+    success: false,
+    error: "OpenAI response was not valid JSON.",
+    raw: resultText
+  });
+}
+    
     try {
       let parsed;
       if (typeof resultText === 'object') {
