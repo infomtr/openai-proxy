@@ -108,7 +108,7 @@ public class StatementData
 
 }
 
-For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.).
+For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.) - if the Description is of a Check, the TransactionCategory should be 'Check'
 Also provide the best GL_Code from the GLCodeList below for foreach transaction and enter it on TransactionGLCode. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
 
 GLCodeList => 
