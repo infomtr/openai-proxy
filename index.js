@@ -79,16 +79,21 @@ public class StatementData
 
         public string dateRangeStartDate { get; set; }
         public string dateRangeEndDate { get; set; }
+
+// for the totals and count, I need these to include all the 'sections' included e.g. Checks or Electronic Withdrawals etc. Basically the group of 'ALL' Deposits and group of 'ALL' Withdrawal summaries
         public string totalAmountOfDepositsAsReported { get; set; }
         public string totalAmountOfWithdrawalsAsReported { get; set; }
         public string totalCountOfDepositsAsReported { get; set; }
-        public string totalCountOfWithdrawalsAsReported { get; set; }
+        public string totalCountOfWithdrawalsAsReported { get; set; }   
+        public string sourceDocumentFileName { get; set; }
     }
 
+    // include ALL transactions including Checks (the description for checks should be in format 'Check 1165')
+//CRITICAL NOTE: ALL TRANSACTIONS ARE NEEDED - NO TRUNCATED RECORDS. THE COUNT OF TRANSACTIONS EXTRACTED SHOULD AT LEAST EQUAL THE COUNT OF ALL THE REPORTED TRANSACTIONS
     public class Transaction
     {
-        public string Date { get; set; }
-        public string Description { get; set; }
+        public string Date { get; set; }  // formatted as yyyy-MM-dd
+        public string Description { get; set; }  // full transaction description (not truncated)
         public string Amount { get; set; }
         public string DepositOrWithdrawal { get; set; }
         public string TransactionCategory { get; set; }
@@ -97,9 +102,14 @@ public class StatementData
 
     public Metadata metadata { get; set; }
     public Transaction[] transactions { get; set; }
+    public int TotalExtractedTransactionsCount { get; set; }  // transactions.Length
+    public decimal TotalExtractedDeposits { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Deposit").Sum(a => a.Amount)
+    public decimal TotalExtractedWithdrawals { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Withdrawal").Sum(a => a.Amount)
+
 }
 
-For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.) and also a GL_Code for TransactionGLCode from the GLCodeList below. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
+For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.).
+Also provide the best GL_Code from the GLCodeList below for foreach transaction and enter it on TransactionGLCode. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
 
 GLCodeList => 
 [
@@ -1011,8 +1021,6 @@ GLCodeList =>
 ]
 
 Please include no explanation or commentary. Just return the raw JSON string only.
-
-
 
 --- Begin Statement Text ---
 ${statementText}
