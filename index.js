@@ -80,7 +80,7 @@ public class StatementData
         public string dateRangeStartDate { get; set; }
         public string dateRangeEndDate { get; set; }
 
-// for the totals and count, I need these to include all the 'sections' included e.g. Checks or Electronic Withdrawals etc. Basically the group of 'ALL' Deposits and group of 'ALL' Withdrawal summaries
+// for the totals and count, I need these to include all the 'sections' included e.g. Checks or Electronic Withdrawals or Fees or Service Charges etc. Basically the group of 'ALL' Deposits and group of 'ALL' Withdrawal summaries
         public string totalAmountOfDepositsAsReported { get; set; }
         public string totalAmountOfWithdrawalsAsReported { get; set; }
         public string totalCountOfDepositsAsReported { get; set; }
@@ -106,10 +106,16 @@ public class StatementData
     public decimal TotalExtractedDeposits { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Deposit").Sum(a => a.Amount)
     public decimal TotalExtractedWithdrawals { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Withdrawal").Sum(a => a.Amount)
 
+    public bool IsThisACreditCardStatement { get; set; }
+    public bool IsThisABankStatement { get; set; }
+
+    public GLCodeList[] GLCodes { get; set; }  // from the GLCodeList below
+
 }
 
-For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.) - if the Description is of a Check, the TransactionCategory should be 'Check'
-Also provide the best GL_Code from the GLCodeList below for foreach transaction and enter it on TransactionGLCode. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
+IMPORTANT NOTES: - For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.) - if the Description is of a Check, the TransactionCategory should be 'Check'
+ - Also provide the best GL_Code from the GLCodeList below for foreach transaction and enter it on TransactionGLCode. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
+ - Special attention to be paid to Credit Card stetment entries e.g. Payments into the card are generally not revenue items (more likely, 'Transfers From' (may appear as negative values)) and the non payments are actually expenses (may appear as positive values)
 
 GLCodeList => 
 [
