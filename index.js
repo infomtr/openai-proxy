@@ -290,6 +290,8 @@ public class StatementData
     public decimal TotalExtractedWithdrawals { get; set; }
     public bool IsThisACreditCardStatement { get; set; }
     public bool IsThisABankStatement { get; set; }
+    public GLCodeList[] GLCodeList { get; set; } = DEFAULT_GL_CODE_LIST.ToArray(); 
+
 }
 
 IMPORTANT NOTES:
