@@ -266,6 +266,7 @@ public class StatementData
         public string ownerName { get; set; }
         public string dateRangeStartDate { get; set; }
         public string dateRangeEndDate { get; set; }
+  // for the totals and count, I need these to include all the 'sections' included e.g. Checks or Electronic Withdrawals or Fees or Service Charges etc. Basically the group of 'ALL' Deposits and group of 'ALL' Withdrawal summaries
         public string totalAmountOfDepositsAsReported { get; set; }
         public string totalAmountOfWithdrawalsAsReported { get; set; }
         public string totalCountOfDepositsAsReported { get; set; }
@@ -273,10 +274,12 @@ public class StatementData
         public string sourceDocumentFileName { get; set; }
     }
 
+    // include ALL transactions including Checks (the description for checks should be in format 'Check 1165')
+//CRITICAL NOTE: ALL TRANSACTIONS ARE NEEDED - NO TRUNCATED RECORDS. THE COUNT OF TRANSACTIONS EXTRACTED SHOULD AT LEAST EQUAL THE COUNT OF ALL THE REPORTED TRANSACTIONS
     public class Transaction
     {
-        public string Date { get; set; }
-        public string Description { get; set; }
+        public string Date { get; set; }  // formatted as yyyy-MM-dd
+        public string Description { get; set; }  // full transaction description (not truncated)
         public string Amount { get; set; }
         public string DepositOrWithdrawal { get; set; }
         public string TransactionCategory { get; set; }
@@ -285,21 +288,19 @@ public class StatementData
 
     public Metadata metadata { get; set; }
     public Transaction[] transactions { get; set; }
-    public int TotalExtractedTransactionsCount { get; set; }
-    public decimal TotalExtractedDeposits { get; set; }
-    public decimal TotalExtractedWithdrawals { get; set; }
+    public int TotalExtractedTransactionsCount { get; set; }  // transactions.Length
+    public decimal TotalExtractedDeposits { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Deposit").Sum(a => a.Amount)
+    public decimal TotalExtractedWithdrawals { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Withdrawal").Sum(a => a.Amount)
     public bool IsThisACreditCardStatement { get; set; }
     public bool IsThisABankStatement { get; set; }
     public GLCodeList[] GLCodeList { get; set; } = DEFAULT_GL_CODE_LIST.ToArray(); 
 
 }
 
-IMPORTANT NOTES:
-- For each transaction, suggest a TransactionCategory.
-- If Description is a Check, category is 'Check'.
-- Suggest the best GL_Code from the GLCodeList provided below for 'TransactionGLCode'. 
-- If no match, leave blank.
-- Payments into Credit Cards are often transfers or negative values. Expenses are positive.
+IMPORTANT NOTES: 
+ - For each transaction, suggest a TransactionCategory (e.g., Phone, Electricity, Fuel, Supplies, Maintenance, etc.) - if the Description is of a Check, the TransactionCategory should be 'Check'
+ - Also provide the best GL_Code from the GLCodeList below for foreach transaction and enter it on TransactionGLCode. If there's no 'satisfactory' match for the GL_Code, just leave it blank.
+ - Special attention to be paid to Credit Card stetment entries e.g. Payments into the card are generally not revenue items (more likely, 'Transfers From' (may appear as negative values)) and the non payments are actually expenses (may appear as positive values)
 
 GLCodeList => 
 ${glCodesJson}
