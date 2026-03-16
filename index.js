@@ -357,8 +357,8 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     const chatCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-      max_tokens: 20000
+      temperature: 0,
+      max_tokens: 10000
     });
 
     const resultText = chatCompletion.choices?.[0]?.message?.content;
