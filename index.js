@@ -293,7 +293,7 @@ public class StatementData
     public decimal TotalExtractedWithdrawals { get; set; }  // transactions.Where(a => a.DepositOrWithdrawal == "Withdrawal").Sum(a => a.Amount)
     public bool IsThisACreditCardStatement { get; set; }
     public bool IsThisABankStatement { get; set; }
-    public GLCodeList[] GLCodeList { get; set; } = DEFAULT_GL_CODE_LIST.ToArray(); 
+    
 
 }
 
