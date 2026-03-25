@@ -355,10 +355,10 @@ app.post('/processFiles', upload.array('files', 12), async (req, res) => {
     console.log("🟡 Prompt length:", prompt.length);
 
     const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       messages: [{ role: "user", content: prompt }],
       temperature: 0,
-      max_tokens: 10000
+      max_tokens: 20000
     });
 
     const resultText = chatCompletion.choices?.[0]?.message?.content;
